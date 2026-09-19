@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Family Feud</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --stage-bg-1:#08080c;
+    --stage-bg-2:#141420;
+    --amber:#ffc24a;
+    --amber-dim:#7a5a1c;
+    --blue-hi:#5a95ea;
+    --blue-mid:#2f66c9;
+    --blue-deep:#0d2a66;
+    --blue-panel-hi:#6fa3ef;
+    --blue-panel-lo:#2e63c4;
+    --navy-badge-hi:#16276b;
+    --navy-badge-lo:#081338;
+    --red-hi:#ff6b6b;
+    --red-mid:#c02222;
+    --red-deep:#4a0000;
+    --ink:#f6f8ff;
+    --console-bg:#111319;
+    --console-panel:#191c25;
+    --console-border:#2b2f3c;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    position:relative;
+    min-height:100vh;
+    background:linear-gradient(180deg, var(--stage-bg-1), var(--stage-bg-2) 70%, #05050a 100%);
+    background-color:var(--stage-bg-1);
+    color:var(--ink);
+    font-family:'Oswald', 'Arial Narrow', sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:30px 14px 60px;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+
+  /* soft out-of-focus stage bokeh behind the board, like the reference photo's background */
+  .bokeh{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .bokeh span{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(46px);
+    opacity:.28;
+  }
+  .bokeh span:nth-child(1){ width:180px; height:180px; left:6%; top:12%; background:#ffcf6b; }
+  .bokeh span:nth-child(2){ width:140px; height:140px; right:8%; top:22%; background:#6fa3ef; }
+  .bokeh span:nth-child(3){ width:110px; height:110px; left:14%; bottom:14%; background:#ffcf6b; }
+  .bokeh span:nth-child(4){ width:160px; height:160px; right:12%; bottom:10%; background:#ffcf6b; }
+
+  h1,h2,h3{margin:0;}
+  button{ font-family:'Oswald','Arial Narrow',sans-serif; cursor:pointer; border:none; -webkit-tap-highlight-color:transparent; }
+  button:focus-visible, input:focus-visible, [tabindex]:focus-visible{ outline:3px solid #6fa3ef; outline-offset:2px; }
+
+  .content{ position:relative; z-index:1; width:100%; display:flex; flex-direction:column; align-items:center; }
+
+  .show-title{
+    text-align:center;
+    font-family:'Anton', Impact, 'Arial Narrow', sans-serif;
+    letter-spacing:.03em;
+    font-size:clamp(20px, 3.4vw, 27px);
+    color:#8a90a8;
+    margin-bottom:14px;
+    text-transform:uppercase;
+  }
+
+  /* ---------- ARCH FRAME ---------- */
+  .board-frame{
+    width:100%;
+    max-width:900px;
+  }
+  .stage-inner{
+    position:relative;
+    border-radius:56px 56px 14px 14px;
+    background:linear-gradient(180deg, #0c0c14, #050508);
+    border:3px solid #000;
+    box-shadow:
+      inset 0 0 0 5px #1b1c26,
+      inset 0 2px 20px rgba(0,0,0,.7),
+      0 24px 54px rgba(0,0,0,.6);
+    padding:26px 20px 24px;
+  }
+
+  /* ---------- ARCH TOP: bulb grids + score ---------- */
+  .arch-top{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    margin-bottom:18px;
+  }
+  .bulb-grid{
+    flex:none;
+    display:grid;
+    grid-template-columns:repeat(6, 9px);
+    grid-auto-rows:9px;
+    gap:7px;
+  }
+  @media (max-width:600px){
+    .bulb-grid{ display:none; }
+  }
+
+  .score-frame{
+    flex:none;
+    border-radius:9px;
+    padding:3px;
+    background:linear-gradient(160deg, #7fb0f5, #0a1c4a);
+    box-shadow:0 10px 22px rgba(0,0,0,.5);
+  }
+  .score-value{
+    display:block;
+    min-width:130px;
+    text-align:center;
+    padding:6px 26px 10px;
+    border-radius:7px;
+    background:linear-gradient(135deg, var(--blue-hi) 0%, var(--blue-mid) 45%, var(--blue-deep) 100%);
+    font-family:'Anton', Impact, sans-serif;
+    font-size:clamp(40px, 9vw, 62px);
+    line-height:1;
+    letter-spacing:.01em;
+    color:#fff;
+    background-image:linear-gradient(135deg, var(--blue-hi) 0%, var(--blue-mid) 45%, var(--blue-deep) 100%);
+    -webkit-text-stroke:2px #08163c;
+    text-shadow:
+      2px 3px 0 #08163c,
+      0 6px 10px rgba(0,0,0,.5);
+  }
+
+  /* ---------- STATUS ROW ---------- */
+  .status-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:22px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+  }
+  .round-pips{ display:flex; gap:16px; }
+  .round-pip{
+    background:none;
+    border:none;
+    padding:0 0 4px;
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:#5b6072;
+    border-bottom:2px solid transparent;
+  }
+  .round-pip.active{
+    color:var(--amber);
+    border-bottom-color:var(--amber);
+  }
+
+  .strike-pips{ display:flex; gap:6px; }
+  .strike-pip{
+    width:22px;
+    height:22px;
+    border-radius:4px;
+    background:#0a0a10;
+    border:1px solid #2a2c38;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Anton', sans-serif;
+    font-size:13px;
+    color:#3a3f52;
+  }
+  .strike-pip.filled{
+    background:linear-gradient(160deg, var(--red-hi), var(--red-mid));
+    color:#fff;
+    border-color:#ff9a9a;
+  }
+
+  /* ---------- QUESTION ---------- */
+  .question-plaque{
+    max-width:640px;
+    margin:0 auto 20px;
+    text-align:center;
+    padding:8px 18px 12px;
+    border-top:2px solid var(--amber-dim);
+    border-bottom:2px solid var(--amber-dim);
+  }
+  .question-text{
+    font-family:'Anton', Impact, sans-serif;
+    font-size:clamp(15px, 3.2vw, 20px);
+    color:var(--ink);
+  }
+
+  /* ---------- TILE GRID ---------- */
+  .tile-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:repeat(4, 1fr);
+    grid-auto-flow:column;
+    gap:7px;
+    max-width:640px;
+    margin:0 auto;
+  }
+  @media (max-width:520px){
+    .tile-grid{ grid-template-columns:1fr; grid-template-rows:none; grid-auto-flow:row; }
+  }
+
+  .tile-container{ perspective:1000px; height:70px; }
+  .tile-card{
+    width:100%; height:100%;
+    position:relative;
+    transform-style:preserve-3d;
+    transition:transform .6s cubic-bezier(.4,.2,.2,1);
+  }
+  .tile-card.revealed{ transform:rotateX(180deg); }
+
+  .tile-front, .tile-back{
+    position:absolute; inset:0;
+    backface-visibility:hidden;
+    border-radius:6px;
+    overflow:hidden;
+  }
+
+  .tile-front{
+    width:100%; height:100%;
+    background:linear-gradient(135deg, var(--blue-hi) 0%, var(--blue-mid) 45%, var(--blue-deep) 100%);
+    border:2px solid rgba(255,255,255,.55);
+    box-shadow:inset 0 2px 2px rgba(255,255,255,.35), inset 0 -8px 12px rgba(0,0,0,.35);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+  }
+  .tile-front:not(:disabled):hover{ filter:brightness(1.08); }
+  .tile-front:not(:disabled):active{ filter:brightness(.94); }
+  .tile-front:disabled{ cursor:default; }
+
+  .tile-badge{
+    width:56px;
+    height:36px;
+    border-radius:18px;
+    background:linear-gradient(180deg, var(--navy-badge-hi), var(--navy-badge-lo));
+    border:2px solid #cfe0ff;
+    box-shadow:0 2px 4px rgba(0,0,0,.55), inset 0 1px 1px rgba(255,255,255,.2);
+    color:#fff;
+    font-family:'Anton', sans-serif;
+    font-size:19px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .tile-back{
+    transform:rotateX(180deg);
+    background:linear-gradient(135deg, var(--blue-hi) 0%, var(--blue-mid) 45%, var(--blue-deep) 100%);
+    border:2px solid rgba(255,255,255,.55);
+    display:flex;
+    align-items:stretch;
+  }
+  .tile-answer-text{
+    flex:1;
+    display:flex;
+    align-items:center;
+    padding-left:18px;
+    font-family:'Anton', Impact, sans-serif;
+    font-size:clamp(13px, 2.4vw, 18px);
+    color:#fff;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .tile-points{
+    flex:none;
+    width:74px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg, var(--blue-panel-hi), var(--blue-panel-lo));
+    border-left:2px solid rgba(255,255,255,.55);
+    font-family:'Anton', sans-serif;
+    font-size:22px;
+    color:#fff;
+  }
+
+  /* ---------- STRIKE OVERLAY ---------- */
+  .strike-overlay{
+    position:absolute; inset:0;
+    background:rgba(2,2,6,.78);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:40;
+    border-radius:56px 56px 14px 14px;
+  }
+  .strike-overlay.showing{ display:flex; }
+  .strike-x-row{ display:flex; gap:16px; }
+  .strike-x{
+    width:76px; height:76px;
+    border-radius:8px;
+    background:linear-gradient(160deg, var(--red-hi) 0%, #e02020 35%, var(--red-mid) 65%, var(--red-deep) 100%);
+    border:3px solid #ffb3b3;
+    box-shadow:0 0 24px rgba(255,59,59,.65), inset 0 3px 4px rgba(255,255,255,.45), inset 0 -6px 10px rgba(0,0,0,.5);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Anton', Impact, sans-serif;
+    font-size:50px;
+    color:#fff;
+    text-shadow:0 3px 2px rgba(0,0,0,.5);
+    opacity:0; transform:scale(.2);
+  }
+  .strike-overlay.showing .strike-x{ animation:strikePop .35s ease-out forwards; }
+  .strike-overlay.showing .strike-x:nth-child(2){ animation-delay:.08s; }
+  .strike-overlay.showing .strike-x:nth-child(3){ animation-delay:.16s; }
+  @keyframes strikePop{
+    0%{ transform:scale(.2); opacity:0; }
+    50%{ transform:scale(1.15); opacity:1; }
+    70%{ transform:scale(.95); }
+    100%{ transform:scale(1); opacity:1; }
+  }
+  .strike-caption{
+    position:absolute; bottom:14%; left:0; right:0; text-align:center;
+    font-family:'Anton', sans-serif; letter-spacing:.12em;
+    font-size:clamp(20px,4vw,30px); color:var(--red-hi);
+    text-shadow:0 0 14px rgba(255,59,59,.7);
+  }
+
+  /* ---------- END OVERLAY ---------- */
+  .end-overlay{
+    position:absolute; inset:0;
+    background:rgba(2,2,6,.92);
+    display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+    z-index:45; border-radius:56px 56px 14px 14px; padding:20px; text-align:center;
+  }
+  .end-overlay.showing{ display:flex; }
+  .end-title{ font-family:'Anton', Impact, sans-serif; font-size:clamp(30px,6vw,48px); letter-spacing:.05em; color:var(--red-hi); }
+  .end-title.win{ color:var(--amber); }
+  .end-sub{ font-size:14px; color:#9aa0b8; letter-spacing:.03em; max-width:420px; }
+  .end-score{ font-family:'Anton', sans-serif; font-size:36px; color:#fff; -webkit-text-stroke:1.5px #08163c; }
+  .end-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:4px; }
+
+  /* ---------- BUTTONS (flat, utilitarian — deliberately unlike the onstage gloss) ---------- */
+  .btn{
+    font-size:12px; font-weight:600; letter-spacing:.07em;
+    padding:10px 16px; border-radius:6px;
+    background:var(--console-panel);
+    border:1px solid var(--console-border);
+    color:var(--ink);
+  }
+  .btn:hover{ background:#20232f; border-color:#3a3f52; }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--blue-mid); border-color:var(--blue-hi); color:#fff; }
+  .btn-primary:hover{ background:#3a75d9; }
+  .btn-danger{ background:var(--red-mid); border-color:#e05a5a; color:#fff; }
+  .btn-danger:hover{ background:#d63a3a; }
+  .btn-gold{ background:#c99a2e; border-color:var(--amber); color:#1a1204; }
+  .btn-gold:hover{ background:#dcab34; }
+
+  /* ---------- CONSOLE ---------- */
+  .console{
+    width:100%; max-width:900px; margin-top:22px;
+    background:var(--console-bg);
+    border:1px solid var(--console-border);
+    border-radius:12px;
+    padding:16px 18px;
+    position:relative; z-index:1;
+  }
+  .console-heading{ font-size:11px; letter-spacing:.2em; color:#5c6178; margin-bottom:12px; font-weight:600; }
+  .console-rows{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .console-readout{
+    font-size:12px; color:#8a90aa; letter-spacing:.04em;
+    background:#0d0f16; border:1px solid var(--console-border);
+    border-radius:6px; padding:9px 12px;
+  }
+  .console-readout strong{ color:#fff; }
+  .console-hint{ font-size:11px; color:#4d5268; margin-left:auto; }
+  kbd{ background:#232733; border:1px solid #363c4d; border-bottom-width:2px; border-radius:4px; padding:1px 6px; font-family:inherit; font-size:11px; }
+
+  /* ---------- SETUP MODAL ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,.65);
+    display:none; align-items:center; justify-content:center; z-index:80; padding:20px;
+  }
+  .modal-backdrop.showing{ display:flex; }
+  .modal{
+    width:100%; max-width:560px; max-height:88vh; overflow-y:auto;
+    background:var(--console-panel); border:1px solid var(--console-border);
+    border-radius:12px; padding:22px;
+  }
+  .modal h2{ font-family:'Anton', sans-serif; letter-spacing:.03em; font-size:22px; margin-bottom:4px; color:var(--amber); }
+  .modal-sub{ font-size:12px; color:#7a8099; margin-bottom:16px; }
+  .field-label{ font-size:11px; letter-spacing:.1em; color:#8a90aa; margin:14px 0 5px; display:block; }
+  .field-input{
+    width:100%; background:#0d0f16; border:1px solid var(--console-border);
+    border-radius:6px; padding:9px 11px; color:var(--ink);
+    font-family:'Oswald', sans-serif; font-size:14px;
+  }
+  .answer-row{ display:grid; grid-template-columns:28px 1fr 70px; gap:8px; align-items:center; margin-top:8px; }
+  .answer-row .idx{ font-family:'Anton', sans-serif; color:#6a7089; text-align:center; }
+  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:20px; flex-wrap:wrap; }
+  .modal-secondary-actions{ display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+
+  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+  @media (prefers-reduced-motion: reduce){
+    .bulb{ animation:none; opacity:.85; }
+    .tile-card{ transition:none; }
+    .strike-overlay.showing .strike-x{ animation:none; opacity:1; transform:scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="bokeh" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+
+<div class="content">
+
+  <h1 class="show-title">Family Feud</h1>
+
+  <div class="board-frame">
+    <div class="stage-inner">
+
+      <div class="arch-top">
+        <div class="bulb-grid" id="bulbGridLeft" aria-hidden="true"></div>
+        <div class="score-frame">
+          <div class="score-value" id="scoreValue" aria-label="Total score">0</div>
+        </div>
+        <div class="bulb-grid" id="bulbGridRight" aria-hidden="true"></div>
+      </div>
+
+      <div class="status-row">
+        <div class="round-pips" id="roundPips"></div>
+        <div class="strike-pips" id="strikePips" aria-label="Strikes"></div>
+      </div>
+
+      <div class="question-plaque">
+        <div class="question-text" id="questionText">Placeholder Question for Round 1</div>
+      </div>
+
+      <div class="tile-grid" id="tileGrid"></div>
+
+      <div class="strike-overlay" id="strikeOverlay">
+        <div class="strike-x-row" id="strikeXRow"></div>
+        <div class="strike-caption">STRIKE!</div>
+      </div>
+
+      <div class="end-overlay" id="endOverlay">
+        <div class="end-title" id="endTitle">STRIKE OUT</div>
+        <div class="end-sub" id="endSub">Three strikes — ]control passes.</div>
+        <div class="end-score" id="endScore">0</div>
+        <div class="end-actions" id="endActions"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="console">
+    <div class="console-heading">HOST / OPERATOR CONTROLS</div>
+    <div class="console-rows">
+      <button class="btn btn-primary" id="btnSetup">Setup Round</button>
+      <button class="btn btn-danger" id="btnStrike">Add Strike (Q)</button>
+      <button class="btn" id="btnRevealAll">Reveal Remaining</button>
+      <button class="btn btn-gold" id="btnNextRound">Next Round →</button>
+      <button class="btn" id="btnReset">Reset Game</button>
+      <button class="btn" id="btnMute">Sound On</button>
+      <div class="console-readout">Round score: <strong id="roundScoreReadout">0</strong></div>
+      <span class="console-hint">Keys <kbd>1</kbd>–<kbd>8</kbd> reveal tiles · <kbd>Q</kbd> = strike</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- Setup Modal -->
+<div class="modal-backdrop" id="setupBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="setupHeading">
+    <h2 id="setupHeading">Setup Round <span id="setupRoundNum">1</span></h2>
+    <div class="modal-sub">Enter the survey question and up to 8 answers. Point values follow standard tiers but can be edited.</div>
+
+    <label class="field-label" for="setupQuestion">Question</label>
+    <input class="field-input" id="setupQuestion" type="text" maxlength="120" placeholder="Name something you'd bring to a picnic">
+
+    <label class="field-label">Answers (highest to lowest)</label>
+    <div id="setupAnswers"></div>
+
+    <div class="modal-secondary-actions">
+      <button class="btn" id="btnRestoreDefaults">Restore Placeholder Text</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="btnCancelSetup">Cancel</button>
+      <button class="btn btn-gold" id="btnSaveSetup">Save Round</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ DEFAULT STATE ============ */
+  function defaultRoundAnswers(){
+    var tier = [20,20,10,10,10,5,5,5];
+    var words = ["ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT"];
+    var out = [];
+    for (var i=0;i<8;i++){
+      out.push({ id:i+1, text:"ANSWER "+words[i], points:tier[i], revealed:false });
+    }
+    return out;
+  }
+
+  function freshDefaultState(){
+    return {
+      currentRound:1,
+      totalScore:0,
+      roundScore:0,
+      strikes:0,
+      isGameOver:false,
+      muted:false,
+      rounds:[
+        { roundId:1, questionText:"Placeholder Question for Round 1", answers:defaultRoundAnswers() },
+        { roundId:2, questionText:"Placeholder Question for Round 2", answers:defaultRoundAnswers() }
+      ]
+    };
+  }
+
+  var STORAGE_KEY = "family-feud-board-state-v2";
+  var gameState = null;
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.rounds && parsed.rounds.length === 2){
+          return parsed;
+        }
+      }
+    }catch(e){ /* storage unavailable or corrupt — fall through to defaults */ }
+    return freshDefaultState();
+  }
+
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState)); }
+    catch(e){ /* ignore quota / privacy-mode errors */ }
+  }
+
+  gameState = loadState();
+
+  /* ============ AUDIO ============ */
+  var audioCtx = null;
+  function getCtx(){
+    if (!audioCtx){
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+
+  function playCorrectSound(){
+    if (gameState.muted) return;
+    var ctx = getCtx(); if (!ctx) return;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.5);
+  }
+
+  function playStrikeSound(intensity){
+    if (gameState.muted) return;
+    var ctx = getCtx(); if (!ctx) return;
+    var dur = intensity >= 3 ? 1.1 : 0.8;
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(130, ctx.currentTime);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + dur);
+  }
+
+  /* ============ BULB GRIDS ============ */
+
+
+  /* ============ RENDER ============ */
+  var scoreValueEl = document.getElementById("scoreValue");
+  var roundScoreReadoutEl = document.getElementById("roundScoreReadout");
+  var questionTextEl = document.getElementById("questionText");
+  var tileGridEl = document.getElementById("tileGrid");
+  var roundPipsEl = document.getElementById("roundPips");
+  var strikePipsEl = document.getElementById("strikePips");
+  var strikeOverlayEl = document.getElementById("strikeOverlay");
+  var strikeXRowEl = document.getElementById("strikeXRow");
+  var endOverlayEl = document.getElementById("endOverlay");
+  var endTitleEl = document.getElementById("endTitle");
+  var endSubEl = document.getElementById("endSub");
+  var endScoreEl = document.getElementById("endScore");
+  var endActionsEl = document.getElementById("endActions");
+  var btnMute = document.getElementById("btnMute");
+  var btnNextRound = document.getElementById("btnNextRound");
+
+  function currentRound(){ return gameState.rounds[gameState.currentRound-1]; }
+
+  function renderScore(){
+    scoreValueEl.textContent = gameState.totalScore;
+    roundScoreReadoutEl.textContent = gameState.roundScore;
+  }
+
+  function renderQuestion(){
+    questionTextEl.textContent = currentRound().questionText;
+  }
+
+  function renderRoundPips(){
+    roundPipsEl.innerHTML = "";
+    gameState.rounds.forEach(function(r, idx){
+      var pip = document.createElement("span");
+      pip.className = "round-pip" + (idx+1 === gameState.currentRound ? " active" : "");
+      pip.textContent = "ROUND " + (idx+1);
+      roundPipsEl.appendChild(pip);
+    });
+  }
+
+  function renderStrikePips(){
+    strikePipsEl.innerHTML = "";
+    for (var i=0;i<3;i++){
+      var pip = document.createElement("span");
+      pip.className = "strike-pip" + (i < gameState.strikes ? " filled" : "");
+      pip.textContent = "X";
+      strikePipsEl.appendChild(pip);
+    }
+  }
+
+  function renderTiles(){
+    tileGridEl.innerHTML = "";
+    currentRound().answers.forEach(function(ans){
+      var container = document.createElement("div");
+      container.className = "tile-container";
+
+      var card = document.createElement("div");
+      card.className = "tile-card" + (ans.revealed ? " revealed" : "");
+
+      var front = document.createElement("button");
+      front.type = "button";
+      front.className = "tile-front";
+      front.setAttribute("aria-label", "Reveal answer " + ans.id);
+      front.disabled = ans.revealed;
+      front.innerHTML = '<span class="tile-badge">' + ans.id + '</span>';
+      front.addEventListener("click", function(id){
+        return function(){ revealTile(id); };
+      }(ans.id));
+
+      var back = document.createElement("div");
+      back.className = "tile-back";
+      back.innerHTML =
+        '<span class="tile-answer-text">' + escapeHtml(ans.text || ("Answer " + ans.id)) + '</span>' +
+        '<span class="tile-points">' + ans.points + '</span>';
+
+      card.appendChild(front);
+      card.appendChild(back);
+      container.appendChild(card);
+      tileGridEl.appendChild(container);
+    });
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];
+    });
+  }
+
+  function renderNextRoundButton(){
+    var isLastRound = gameState.currentRound >= gameState.rounds.length;
+    btnNextRound.textContent = isLastRound ? "Finish Game →" : "Next Round →";
+  }
+
+  function renderMuteButton(){
+    btnMute.textContent = gameState.muted ? " Sound Off" : "Sound On";
+  }
+
+  function renderEndOverlay(){
+    if (gameState.isGameOver){
+      endTitleEl.textContent = "STRIKE OUT";
+      endTitleEl.className = "end-title";
+      endSubEl.textContent = "Three strikes on Round " + gameState.currentRound + ". Control passes to the other family.";
+      endScoreEl.textContent = gameState.totalScore;
+      endActionsEl.innerHTML = "";
+
+      endActionsEl.appendChild(makeBtn("btn", "Reveal Remaining Answers", function(){ revealAllRemaining(); }));
+      var isLastRound = gameState.currentRound >= gameState.rounds.length;
+      endActionsEl.appendChild(makeBtn("btn btn-gold", isLastRound ? "Finish Game" : "Next Round →", function(){ nextRound(); }));
+      endActionsEl.appendChild(makeBtn("btn", "Reset Game", function(){ resetGame(); }));
+
+      endOverlayEl.classList.add("showing");
+    } else {
+      endOverlayEl.classList.remove("showing");
+    }
+  }
+
+  function makeBtn(cls, label, onClick){
+    var b = document.createElement("button");
+    b.className = cls;
+    b.textContent = label;
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  function renderAll(){
+    renderScore();
+    renderQuestion();
+    renderRoundPips();
+    renderStrikePips();
+    renderTiles();
+    renderNextRoundButton();
+    renderMuteButton();
+    renderEndOverlay();
+  }
+
+  /* ============ GAME LOGIC ============ */
+  function revealTile(id){
+    if (gameState.isGameOver) return;
+    var ans = currentRound().answers.filter(function(a){ return a.id === id; })[0];
+    if (!ans || ans.revealed) return;
+    ans.revealed = true;
+    gameState.roundScore += ans.points;
+    gameState.totalScore += ans.points;
+    playCorrectSound();
+    renderScore();
+    renderTiles();
+    saveState();
+  }
+
+  function revealAllRemaining(){
+    currentRound().answers.forEach(function(a){ a.revealed = true; });
+    renderTiles();
+    saveState();
+  }
+
+  var strikeHideTimer = null;
+  function addStrike(){
+    if (gameState.isGameOver) return;
+    gameState.strikes += 1;
+    playStrikeSound(gameState.strikes);
+    renderStrikePips();
+    showStrikeOverlay(gameState.strikes);
+
+    if (gameState.strikes >= 3){
+      gameState.isGameOver = true;
+    }
+    saveState();
+
+    clearTimeout(strikeHideTimer);
+    strikeHideTimer = setTimeout(function(){
+      hideStrikeOverlay();
+      if (gameState.isGameOver) renderEndOverlay();
+    }, 1500);
+  }
+
+  function showStrikeOverlay(count){
+    strikeXRowEl.innerHTML = "";
+    for (var i=0;i<count;i++){
+      var x = document.createElement("div");
+      x.className = "strike-x";
+      x.textContent = "X";
+      strikeXRowEl.appendChild(x);
+    }
+    strikeOverlayEl.classList.remove("showing");
+    void strikeOverlayEl.offsetWidth;
+    strikeOverlayEl.classList.add("showing");
+  }
+
+  function hideStrikeOverlay(){
+    strikeOverlayEl.classList.remove("showing");
+  }
+
+  function nextRound(){
+    hideStrikeOverlay();
+    var isLastRound = gameState.currentRound >= gameState.rounds.length;
+    if (isLastRound){
+      gameState.isGameOver = true;
+      renderEndOverlayAsFinish();
+      saveState();
+      return;
+    }
+    gameState.currentRound += 1;
+    gameState.strikes = 0;
+    gameState.roundScore = 0;
+    gameState.totalScore = 0; //reset total score for next round 
+    gameState.isGameOver = false;
+    currentRound().answers.forEach(function(a){ a.revealed = false; });
+    renderAll();
+    saveState();
+  }
+
+  function renderEndOverlayAsFinish(){
+    endTitleEl.textContent = "FINAL SCORE";
+    endTitleEl.className = "end-title win";
+    endSubEl.textContent = "Game complete — great feud!";
+    endScoreEl.textContent = gameState.totalScore;
+    endActionsEl.innerHTML = "";
+    endActionsEl.appendChild(makeBtn("btn btn-gold", "Play Again", function(){ resetGame(); }));
+    endOverlayEl.classList.add("showing");
+  }
+
+  function resetGame(){
+    hideStrikeOverlay();
+    gameState.currentRound = 1;
+    gameState.totalScore = 0;
+    gameState.roundScore = 0;
+    gameState.strikes = 0;
+    gameState.isGameOver = false;
+    gameState.rounds.forEach(function(r){
+      r.answers.forEach(function(a){ a.revealed = false; });
+    });
+    renderAll();
+    saveState();
+  }
+
+  function toggleMute(){
+    gameState.muted = !gameState.muted;
+    renderMuteButton();
+    saveState();
+  }
+
+  /* ============ SETUP MODAL ============ */
+  var setupBackdrop = document.getElementById("setupBackdrop");
+  var setupRoundNum = document.getElementById("setupRoundNum");
+  var setupQuestion = document.getElementById("setupQuestion");
+  var setupAnswersEl = document.getElementById("setupAnswers");
+
+  function openSetup(){
+    var r = currentRound();
+    setupRoundNum.textContent = gameState.currentRound;
+    setupQuestion.value = r.questionText;
+    setupAnswersEl.innerHTML = "";
+    r.answers.forEach(function(ans){
+      var row = document.createElement("div");
+      row.className = "answer-row";
+      row.innerHTML =
+        '<span class="idx">' + ans.id + '</span>' +
+        '<input class="field-input" type="text" maxlength="60" data-role="ans-text" data-id="' + ans.id + '" value="' + escapeHtml(ans.text) + '">' +
+        '<input class="field-input" type="number" min="0" max="99" data-role="ans-points" data-id="' + ans.id + '" value="' + ans.points + '">';
+      setupAnswersEl.appendChild(row);
+    });
+    setupBackdrop.classList.add("showing");
+    setupQuestion.focus();
+  }
+
+  function closeSetup(){
+    setupBackdrop.classList.remove("showing");
+  }
+
+  function saveSetup(){
+    var r = currentRound();
+    r.questionText = setupQuestion.value.trim() || r.questionText;
+    var texts = setupAnswersEl.querySelectorAll('[data-role="ans-text"]');
+    var points = setupAnswersEl.querySelectorAll('[data-role="ans-points"]');
+    texts.forEach(function(inp){
+      var id = Number(inp.getAttribute("data-id"));
+      var ans = r.answers.filter(function(a){ return a.id === id; })[0];
+      if (ans) ans.text = (inp.value.trim() || ans.text).toUpperCase();
+    });
+    points.forEach(function(inp){
+      var id = Number(inp.getAttribute("data-id"));
+      var ans = r.answers.filter(function(a){ return a.id === id; })[0];
+      var v = parseInt(inp.value, 10);
+      if (ans && !isNaN(v) && v >= 0) ans.points = v;
+    });
+    closeSetup();
+    renderAll();
+    saveState();
+  }
+
+  function restoreDefaultsForCurrentRound(){
+    var idx = gameState.currentRound - 1;
+    var defaults = freshDefaultState().rounds[idx];
+    setupQuestion.value = defaults.questionText;
+    var texts = setupAnswersEl.querySelectorAll('[data-role="ans-text"]');
+    var points = setupAnswersEl.querySelectorAll('[data-role="ans-points"]');
+    texts.forEach(function(inp, i){ inp.value = defaults.answers[i].text; });
+    points.forEach(function(inp, i){ inp.value = defaults.answers[i].points; });
+  }
+
+  /* ============ WIRE UP ============ */
+  document.getElementById("btnSetup").addEventListener("click", openSetup);
+  document.getElementById("btnCancelSetup").addEventListener("click", closeSetup);
+  document.getElementById("btnSaveSetup").addEventListener("click", saveSetup);
+  document.getElementById("btnRestoreDefaults").addEventListener("click", restoreDefaultsForCurrentRound);
+  document.getElementById("btnStrike").addEventListener("click", addStrike);
+  document.getElementById("btnRevealAll").addEventListener("click", revealAllRemaining);
+  document.getElementById("btnNextRound").addEventListener("click", nextRound);
+  document.getElementById("btnReset").addEventListener("click", function(){
+    if (confirm("Reset scores, strikes, and revealed tiles? Your question/answer text will be kept.")){
+      resetGame();
+    }
+  });
+  btnMute.addEventListener("click", toggleMute);
+
+  setupBackdrop.addEventListener("click", function(e){
+    if (e.target === setupBackdrop) closeSetup();
+  });
+
+  window.addEventListener("keydown", function(e){
+    var tag = (document.activeElement && document.activeElement.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA"){
+      if (e.key === "Escape") closeSetup();
+      return;
+    }
+    if (setupBackdrop.classList.contains("showing")){
+      if (e.key === "Escape") closeSetup();
+      return;
+    }
+    if (e.key >= "1" && e.key <= "8"){
+      revealTile(Number(e.key));
+    } else if (e.key === "q" || e.key === "Q"){
+      addStrike();
+    }
+  });
+
+  ["pointerdown","keydown"].forEach(function(evt){
+    window.addEventListener(evt, function once(){
+      getCtx();
+      window.removeEventListener(evt, once);
+    }, { once:true });
+  });
+
+  /* ============ INIT ============ */
+  renderAll();
+
+})();
+</script>
+</body>
+</html>
