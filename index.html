@@ -508,12 +508,14 @@
   "use strict";
 
   /* ============ DEFAULT STATE ============ */
-  function defaultRoundAnswers(){
+  function defaultRoundAnswers(round){
     var tier = [20,20,10,10,10,5,5,5];
-    var words = ["ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT"];
+    var texts = round === 2
+      ? ["WORLD WAR II / WORLD WARS","ANCIENT EGYPT / PYRAMIDS","ANCIENT ROME / EMPIRE","THE RENAISSANCE","AMERICAN REVOLUTION","THE INDUSTRIAL REVOLUTION","THE MIDDLE AGES / MEDIEVAL","FRENCH REVOLUTION"]
+      : ["EIFFEL TOWER / PARIS","GREAT WALL OF CHINA","GRAND CANYON","STATUE OF LIBERTY","TAJ MAHAL","MACHU PICCHU","COLOSSEUM / ROME","MOUNT EVEREST"];
     var out = [];
     for (var i=0;i<8;i++){
-      out.push({ id:i+1, text:"ANSWER "+words[i], points:tier[i], revealed:false });
+      out.push({ id:i+1, text:texts[i], points:tier[i], revealed:false });
     }
     return out;
   }
@@ -527,8 +529,8 @@
       isGameOver:false,
       muted:false,
       rounds:[
-        { roundId:1, questionText:"Placeholder Question for Round 1", answers:defaultRoundAnswers() },
-        { roundId:2, questionText:"Placeholder Question for Round 2", answers:defaultRoundAnswers() }
+        { roundId:1, questionText:"We asked 100 people: Name a famous global landmark or natural wonder.", answers:defaultRoundAnswers(1) },
+        { roundId:2, questionText:"We asked 100 people: Name a major historical era or event taught in world history.", answers:defaultRoundAnswers(2) }
       ]
     };
   }
@@ -752,23 +754,36 @@
   }
 
   var strikeHideTimer = null;
+  var strikeShowTimer = null;
   function addStrike(){
     if (gameState.isGameOver) return;
     gameState.strikes += 1;
     playStrikeSound(gameState.strikes);
     renderStrikePips();
-    showStrikeOverlay(gameState.strikes);
+
+    clearTimeout(strikeShowTimer);
+    clearTimeout(strikeHideTimer);
 
     if (gameState.strikes >= 3){
       gameState.isGameOver = true;
-    }
-    saveState();
+      revealAllRemaining();
+      saveState();
 
-    clearTimeout(strikeHideTimer);
-    strikeHideTimer = setTimeout(function(){
-      hideStrikeOverlay();
-      if (gameState.isGameOver) renderEndOverlay();
-    }, 1500);
+      // Hold off on the strike blur so the family can see the revealed board first.
+      strikeShowTimer = setTimeout(function(){
+        showStrikeOverlay(gameState.strikes);
+        strikeHideTimer = setTimeout(function(){
+          hideStrikeOverlay();
+          renderEndOverlay();
+        }, 1500);
+      }, 12000);
+    } else {
+      showStrikeOverlay(gameState.strikes);
+      saveState();
+      strikeHideTimer = setTimeout(function(){
+        hideStrikeOverlay();
+      }, 1500);
+    }
   }
 
   function showStrikeOverlay(count){
@@ -785,6 +800,8 @@
   }
 
   function hideStrikeOverlay(){
+    clearTimeout(strikeShowTimer);
+    clearTimeout(strikeHideTimer);
     strikeOverlayEl.classList.remove("showing");
   }
 
